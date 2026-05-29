@@ -22,12 +22,6 @@ jobs:
   build:
     name: Build installer
     runs-on: windows-latest
-    env:
-      # Keep Zig's global cache on the same drive as the workspace (D:). The
-      # default global cache lives on C: (%APPDATA%), and a build Run step that
-      # spans drives trips a path assertion in the Zig 0.15.2 build runner
-      # (cannot make a cross-drive path relative).
-      ZIG_GLOBAL_CACHE_DIR: ${{ runner.temp }}\zig-global-cache
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,6 +38,11 @@ jobs:
           Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\zig.zip"
           Expand-Archive -Path "$env:RUNNER_TEMP\zig.zip" -DestinationPath "$env:RUNNER_TEMP\zig" -Force
           "$env:RUNNER_TEMP\zig\zig-x86_64-windows-$ver" | Out-File -FilePath $env:GITHUB_PATH -Append
+          # Keep Zig's global cache on the workspace drive. The default cache is
+          # on C: (%APPDATA%) while the runner workspace is on D:; a build Run
+          # step spanning drives trips a path assertion in the Zig 0.15.2 build
+          # runner (cannot make a cross-drive path relative).
+          "ZIG_GLOBAL_CACHE_DIR=$env:RUNNER_TEMP\zig-global-cache" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build (ReleaseFast)
         run: zig build -Dtarget=x86_64-windows-gnu -Dapp-runtime=win32 --release=fast -Demit-docs=false
