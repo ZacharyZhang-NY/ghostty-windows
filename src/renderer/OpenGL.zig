@@ -236,11 +236,18 @@ pub fn threadEnter(self: *const OpenGL, surface: *apprt.Surface) !void {
         },
 
         // Win32 owns its WGL context on the render thread: make it current and
-        // load glad here, then enable vsync for steady high-refresh frames.
+        // load glad here. Swap interval 0 (no app-side vsync): the window is
+        // always composited by the DWM, which presents tear-free at the refresh
+        // rate on its own, so a swap-interval of 1 only adds latency (the swap
+        // blocks to the DWM vblank AND the DWM queues another frame). With 0 the
+        // render thread presents immediately and is free to service the next
+        // content wakeup, which is what keeps typing responsive. Rendering is
+        // content-driven (no free-running draw timer unless custom shaders are
+        // active), so this does not spin the GPU while idle.
         apprt.win32 => {
             try surface.gl.makeCurrent();
             try prepareContext(&win32_gl.glProcAddress);
-            win32_gl.setSwapInterval(1);
+            win32_gl.setSwapInterval(0);
         },
 
         apprt.embedded => {
