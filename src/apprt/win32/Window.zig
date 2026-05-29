@@ -5,6 +5,7 @@
 const std = @import("std");
 const windows = std.os.windows;
 const user32 = @import("api/user32.zig");
+const dwmapi = @import("api/dwmapi.zig");
 const apprt = @import("../../apprt.zig");
 
 const log = std.log.scoped(.win32_window);
@@ -100,6 +101,14 @@ pub fn show(hwnd: windows.HWND) void {
 /// queue so teardown runs on the GUI thread via the window procedure.
 pub fn postClose(hwnd: windows.HWND) void {
     _ = user32.PostMessageW(hwnd, user32.WM_CLOSE, 0, 0);
+}
+
+/// Apply a translucent acrylic backdrop when the config asks for translucency
+/// (background-opacity < 1, or background-blur enabled). The renderer already
+/// bakes background-opacity into the framebuffer alpha; this opts the window
+/// into translucent DWM composition with an acrylic blur. Best-effort.
+pub fn applyBackdrop(hwnd: windows.HWND, opacity: f64, blur_enabled: bool) void {
+    dwmapi.setAcrylic(hwnd, opacity < 1.0 or blur_enabled);
 }
 
 /// The size of the window's client area in physical pixels.

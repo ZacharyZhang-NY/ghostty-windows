@@ -624,6 +624,7 @@ fn addWin32(step: *std.Build.Step.Compile) void {
     step.linkSystemLibrary("gdi32");
     step.linkSystemLibrary("user32");
     step.linkSystemLibrary("opengl32");
+    step.linkSystemLibrary("dwmapi");
 }
 
 /// Setup the dependencies for the GTK apprt build.

@@ -93,6 +93,13 @@ pub fn init(self: *Surface, app: *App) !void {
     );
     errdefer Window.destroy(self.hwnd);
 
+    // Translucent acrylic backdrop when the config requests it (best-effort).
+    Window.applyBackdrop(
+        self.hwnd,
+        app.config.@"background-opacity",
+        app.config.@"background-blur".enabled(),
+    );
+
     self.size = Window.clientSize(self.hwnd);
     self.content_scale = Window.contentScale(self.hwnd);
     self.storeSize();
