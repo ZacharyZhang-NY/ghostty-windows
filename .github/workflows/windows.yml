@@ -24,7 +24,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Download Zig directly from the official release path. The community
       # mirror-based setup actions are unreliable (mirrors intermittently
