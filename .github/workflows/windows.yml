@@ -22,6 +22,12 @@ jobs:
   build:
     name: Build installer
     runs-on: windows-latest
+    env:
+      # Keep Zig's global cache on the same drive as the workspace (D:). The
+      # default global cache lives on C: (%APPDATA%), and a build Run step that
+      # spans drives trips a path assertion in the Zig 0.15.2 build runner
+      # (cannot make a cross-drive path relative).
+      ZIG_GLOBAL_CACHE_DIR: ${{ runner.temp }}\zig-global-cache
     steps:
       - name: Checkout
         uses: actions/checkout@v4
