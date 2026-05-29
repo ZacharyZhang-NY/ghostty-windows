@@ -1,0 +1,72 @@
+name: Windows
+
+# Build the native Windows (win32 + WGL OpenGL) port and produce an installer.
+# - Every push to main and every manual run uploads the installer as an
+#   artifact on the run.
+# - Pushing a tag like v1.3.2 also publishes a GitHub Release with the
+#   installer attached.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build installer
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.15.2
+
+      - name: Build (ReleaseFast)
+        run: zig build -Dtarget=x86_64-windows-gnu -Dapp-runtime=win32 --release=fast -Demit-docs=false
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $v = $env:GITHUB_REF -replace '^refs/tags/v', ''
+          } else {
+            $v = '0.0.0-' + $env:GITHUB_SHA.Substring(0, 7)
+          }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Installer version: $v"
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DBuildDir=$env:GITHUB_WORKSPACE\zig-out" `
+            "/DAppVersion=${{ steps.ver.outputs.version }}" `
+            dist\windows\ghostty.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghostty-setup-x86_64
+          path: dist/windows/output/ghostty-setup-x86_64.exe
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/windows/output/ghostty-setup-x86_64.exe
+          generate_release_notes: true
