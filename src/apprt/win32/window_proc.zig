@@ -6,6 +6,7 @@ const windows = std.os.windows;
 const user32 = @import("api/user32.zig");
 const input = @import("../../input.zig");
 const Surface = @import("Surface.zig");
+const winput = @import("input.zig");
 
 const UINT = windows.UINT;
 const WPARAM = windows.WPARAM;
@@ -31,6 +32,30 @@ inline fn signedHi(value: usize) i32 {
 inline fn scancode(lparam_bits: usize) u32 {
     const sc: u32 = @intCast((lparam_bits >> 16) & 0xFF);
     return if ((lparam_bits & 0x01000000) != 0) (0xE000 | sc) else sc;
+}
+
+/// Consume the WM_CHAR/WM_SYSCHAR messages that TranslateMessage queued for the
+/// key currently being dispatched and decode them to UTF-8. This associates the
+/// produced text with the single keyCallback (matching Ghostty's GTK/macOS
+/// model) instead of delivering it through a separate paste-style path. A lone
+/// control character is reported as empty so the key encoder produces the right
+/// sequence from the physical key and modifiers.
+fn collectText(hwnd: HWND, char_msg: UINT, buf: *[32]u8) []const u8 {
+    var decoder: winput.CharDecoder = .{};
+    var len: usize = 0;
+    var msg: user32.MSG = undefined;
+    while (len + 4 <= buf.len and
+        user32.PeekMessageW(&msg, hwnd, char_msg, char_msg, user32.PM_REMOVE) != windows.FALSE)
+    {
+        var cbuf: [4]u8 = undefined;
+        if (decoder.next(@truncate(msg.wParam), &cbuf)) |bytes| {
+            @memcpy(buf[len..][0..bytes.len], bytes);
+            len += bytes.len;
+        }
+    }
+    const text = buf[0..len];
+    if (text.len == 1 and (text[0] < 0x20 or text[0] == 0x7F)) return "";
+    return text;
 }
 
 fn surfaceFrom(hwnd: HWND) ?*Surface {
@@ -149,27 +174,30 @@ pub fn wndProc(
 
         user32.WM_KEYDOWN => {
             const action: input.Action = if ((lp & 0x40000000) != 0) .repeat else .press;
-            _ = surface.onKey(action, @intCast(wp), scancode(lp));
+            var buf: [32]u8 = undefined;
+            const text = collectText(hwnd, user32.WM_CHAR, &buf);
+            _ = surface.onKey(action, @intCast(wp), scancode(lp), text);
             return 0;
         },
         user32.WM_KEYUP => {
-            _ = surface.onKey(.release, @intCast(wp), scancode(lp));
+            _ = surface.onKey(.release, @intCast(wp), scancode(lp), "");
             return 0;
         },
-        user32.WM_CHAR => {
-            surface.onChar(@truncate(wp));
-            return 0;
-        },
+        // WM_CHAR/WM_SYSCHAR are consumed by the matching WM_KEY*DOWN above via
+        // collectText; any that arrive standalone are ignored for now.
+        user32.WM_CHAR, user32.WM_SYSCHAR => return 0,
 
         // System keys (Alt combos): forward to the core, but also let the
         // default handler run so Alt+F4 and system accelerators keep working.
         user32.WM_SYSKEYDOWN => {
             const action: input.Action = if ((lp & 0x40000000) != 0) .repeat else .press;
-            _ = surface.onKey(action, @intCast(wp), scancode(lp));
+            var buf: [32]u8 = undefined;
+            const text = collectText(hwnd, user32.WM_SYSCHAR, &buf);
+            _ = surface.onKey(action, @intCast(wp), scancode(lp), text);
             return user32.DefWindowProcW(hwnd, msg, wparam, lparam);
         },
         user32.WM_SYSKEYUP => {
-            _ = surface.onKey(.release, @intCast(wp), scancode(lp));
+            _ = surface.onKey(.release, @intCast(wp), scancode(lp), "");
             return user32.DefWindowProcW(hwnd, msg, wparam, lparam);
         },
 

@@ -55,9 +55,6 @@ cursor_pos: apprt.CursorPos,
 /// Window title, owned, UTF-8, null-terminated. Updated via the set_title action.
 title: ?[:0]u8,
 
-/// Joins WM_CHAR UTF-16 code units (surrogate pairs) into UTF-8.
-char_decoder: winput.CharDecoder,
-
 /// Whether we've armed WM_MOUSELEAVE tracking for the current hover.
 mouse_tracking: bool,
 
@@ -82,7 +79,6 @@ pub fn init(self: *Surface, app: *App) !void {
         .content_scale = .{ .x = 1, .y = 1 },
         .cursor_pos = .{ .x = 0, .y = 0 },
         .title = null,
-        .char_decoder = .{},
         .mouse_tracking = false,
         .mouse_shape = .text,
         .mouse_visible = true,
@@ -278,6 +274,11 @@ pub fn onScroll(self: *Surface, xoff: f64, yoff: f64) void {
         log.warn("error in scroll callback err={}", .{err});
 }
 
+/// Deliver a key event to the core. `utf8` is the text the key produced (from
+/// the matching WM_CHAR), empty for control/special keys. Matching Ghostty's
+/// model, this is the single input path: the key encoder emits the text for us,
+/// so there is no separate paste-style text callback for typing.
+///
 /// Returns true if the surface was closed by this key event (pointers are then
 /// invalid and the caller must stop touching it).
 ///
@@ -290,12 +291,13 @@ pub fn onKey(
     action: input.Action,
     vk: u32,
     scancode: u32,
+    utf8: []const u8,
 ) bool {
     const ev: input.KeyEvent = .{
         .action = action,
         .key = winput.keyFromScancode(scancode),
         .mods = winput.currentMods(),
-        .utf8 = "",
+        .utf8 = utf8,
         .unshifted_codepoint = unshiftedCodepoint(vk),
     };
     const effect = self.core_surface.keyCallback(ev) catch |err| {
@@ -303,15 +305,6 @@ pub fn onKey(
         return false;
     };
     return effect == .closed;
-}
-
-pub fn onChar(self: *Surface, unit: u16) void {
-    var buf: [4]u8 = undefined;
-    const bytes = self.char_decoder.next(unit, &buf) orelse return;
-    // Control characters are produced by keyCallback's encoder, not text input.
-    if (bytes.len == 1 and (bytes[0] < 0x20 or bytes[0] == 0x7F)) return;
-    self.core_surface.textCallback(bytes) catch |err|
-        log.warn("error in text callback err={}", .{err});
 }
 
 fn unshiftedCodepoint(vk: u32) u21 {
