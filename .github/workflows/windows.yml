@@ -26,10 +26,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Download Zig directly from the official release path. The community
+      # mirror-based setup actions are unreliable (mirrors intermittently
+      # 404/503), so we fetch the pinned release deterministically.
       - name: Setup Zig
-        uses: mlugg/setup-zig@v1
-        with:
-          version: 0.15.2
+        shell: pwsh
+        run: |
+          $ver = "0.15.2"
+          $url = "https://ziglang.org/download/$ver/zig-x86_64-windows-$ver.zip"
+          Write-Host "Downloading $url"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\zig.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP\zig.zip" -DestinationPath "$env:RUNNER_TEMP\zig" -Force
+          "$env:RUNNER_TEMP\zig\zig-x86_64-windows-$ver" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Build (ReleaseFast)
         run: zig build -Dtarget=x86_64-windows-gnu -Dapp-runtime=win32 --release=fast -Demit-docs=false
