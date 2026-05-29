@@ -21,7 +21,10 @@ const IDC_HAND: u16 = 32649;
 const IDC_APPSTARTING: u16 = 32650;
 const IDC_HELP: u16 = 32651;
 
-inline fn idc(id: u16) windows.LPCWSTR {
+// MAKEINTRESOURCE: a standard cursor id is an ordinal in the low word, not a
+// real pointer, so it has no alignment requirement. Use an align(1) pointer so
+// @ptrFromInt does not assert 2-byte alignment for odd ids (e.g. IDC_IBEAM).
+inline fn idc(id: u16) [*:0]align(1) const u16 {
     return @ptrFromInt(id);
 }
 

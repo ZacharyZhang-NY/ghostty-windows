@@ -177,7 +177,9 @@ pub extern "user32" fn UnregisterClassW(
 ) callconv(.winapi) BOOL;
 pub extern "user32" fn LoadCursorW(
     instance: ?HINSTANCE,
-    name: LPCWSTR,
+    // align(1): the name may be a MAKEINTRESOURCE ordinal (odd-valued), not a
+    // real 2-byte-aligned string pointer.
+    name: [*:0]align(1) const u16,
 ) callconv(.winapi) ?HCURSOR;
 pub extern "user32" fn SetCursor(cursor: ?HCURSOR) callconv(.winapi) ?HCURSOR;
 
