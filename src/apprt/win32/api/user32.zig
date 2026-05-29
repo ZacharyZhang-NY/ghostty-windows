@@ -85,6 +85,9 @@ pub const DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2: DPI_AWARENESS_CONTEXT =
     @ptrFromInt(@as(usize, @bitCast(@as(isize, -4))));
 pub const USER_DEFAULT_SCREEN_DPI: u32 = 96;
 
+// WM_SETCURSOR hit-test code (low word of lParam) for the client area.
+pub const HTCLIENT: u16 = 1;
+
 // Window class styles.
 pub const CS_VREDRAW: UINT = 0x0001;
 pub const CS_HREDRAW: UINT = 0x0002;

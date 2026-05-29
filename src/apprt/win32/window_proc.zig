@@ -79,6 +79,16 @@ pub fn wndProc(
         // We render the whole client area with GL; suppress GDI erase.
         user32.WM_ERASEBKGND => return 1,
 
+        user32.WM_SETCURSOR => {
+            // Apply the terminal's cursor over the client area; defer the
+            // window frame (resize borders, etc.) to the default handler.
+            if (loword(lp) == user32.HTCLIENT) {
+                _ = user32.SetCursor(surface.currentCursor());
+                return 1;
+            }
+            return user32.DefWindowProcW(hwnd, msg, wparam, lparam);
+        },
+
         user32.WM_SETFOCUS => {
             surface.onFocus(true);
             return 0;

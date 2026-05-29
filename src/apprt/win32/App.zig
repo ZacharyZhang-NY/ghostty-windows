@@ -118,6 +118,22 @@ pub fn performAction(
             },
         },
 
+        .mouse_shape => switch (target) {
+            .app => return false,
+            .surface => |core_surface| {
+                core_surface.rt_surface.mouse_shape = value;
+                return true;
+            },
+        },
+
+        .mouse_visibility => switch (target) {
+            .app => return false,
+            .surface => |core_surface| {
+                core_surface.rt_surface.mouse_visible = value == .visible;
+                return true;
+            },
+        },
+
         else => return false,
     }
 }

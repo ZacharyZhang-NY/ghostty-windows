@@ -13,12 +13,14 @@ const windows = std.os.windows;
 const apprt = @import("../../apprt.zig");
 const input = @import("../../input.zig");
 const internal_os = @import("../../os/main.zig");
+const terminal = @import("../../terminal/main.zig");
 const CoreSurface = @import("../../Surface.zig");
 
 const App = @import("App.zig");
 const Window = @import("Window.zig");
 const Context = @import("gl/Context.zig");
 const clipboard = @import("clipboard.zig");
+const cursor = @import("cursor.zig");
 const winput = @import("input.zig");
 
 const log = std.log.scoped(.win32_surface);
@@ -59,6 +61,11 @@ char_decoder: winput.CharDecoder,
 /// Whether we've armed WM_MOUSELEAVE tracking for the current hover.
 mouse_tracking: bool,
 
+/// The cursor shape the terminal wants over the client area, and whether the
+/// cursor is currently visible (hidden while typing).
+mouse_shape: terminal.MouseShape,
+mouse_visible: bool,
+
 /// Initialize the surface: create the window + GL context, then wire the core
 /// surface (which starts the renderer and IO threads). Must run on the app
 /// thread. The GL context is created here but made current on the render thread.
@@ -77,6 +84,8 @@ pub fn init(self: *Surface, app: *App) !void {
         .title = null,
         .char_decoder = .{},
         .mouse_tracking = false,
+        .mouse_shape = .text,
+        .mouse_visible = true,
     };
 
     self.hwnd = try Window.create(
@@ -212,6 +221,12 @@ pub fn setClipboard(
 
 pub fn defaultTermioEnv(self: *const Surface) !std.process.EnvMap {
     return internal_os.getEnvMap(self.app.core_app.alloc);
+}
+
+/// The Win32 cursor to show over the client area, or null to hide it.
+pub fn currentCursor(self: *const Surface) ?windows.HCURSOR {
+    if (!self.mouse_visible) return null;
+    return cursor.load(self.mouse_shape);
 }
 
 // --- window-procedure event handlers ------------------------------------------
