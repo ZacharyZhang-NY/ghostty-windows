@@ -605,6 +605,7 @@ pub fn add(
         switch (self.config.app_runtime) {
             .none => {},
             .gtk => try self.addGtkNg(step),
+            .win32 => addWin32(step),
         }
     }
 
@@ -613,6 +614,16 @@ pub fn add(
     self.framedata.addImport(step);
 
     return static_libs;
+}
+
+/// Link the Windows system libraries the Win32 apprt and WGL renderer require.
+/// glad (the GL loader) is already compiled into every build above; these
+/// provide windowing (user32), device contexts/pixel formats (gdi32), and the
+/// WGL entry points (opengl32).
+fn addWin32(step: *std.Build.Step.Compile) void {
+    step.linkSystemLibrary("gdi32");
+    step.linkSystemLibrary("user32");
+    step.linkSystemLibrary("opengl32");
 }
 
 /// Setup the dependencies for the GTK apprt build.
