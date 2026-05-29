@@ -23,6 +23,7 @@ flatpak/builddir/
 flatpak/repo/
 
 glad.zip
+/dist/windows/output/
 /Box_test.ppm
 /Box_test_diff.ppm
 /ghostty.qcow2
