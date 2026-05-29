@@ -31,6 +31,13 @@ pub fn user32_MapVirtualKeyToChar(vk: u32) u32 {
     return user32.MapVirtualKeyW(vk, user32.MAPVK_VK_TO_CHAR);
 }
 
+/// Derive a Set 1 scan code from a virtual-key code. Used as a fallback for key
+/// messages that arrive without a scan code (synthetic input, some keyboard
+/// remapping tools), so special keys still resolve.
+pub fn scancodeFromVk(vk: u32) u32 {
+    return user32.MapVirtualKeyW(vk, user32.MAPVK_VK_TO_VSC);
+}
+
 inline fn down(vk: c_int) bool {
     return (@as(u16, @bitCast(user32.GetKeyState(vk))) & 0x8000) != 0;
 }

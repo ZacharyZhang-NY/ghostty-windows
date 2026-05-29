@@ -283,7 +283,8 @@ pub extern "user32" fn ValidateRect(
     rect: ?*const RECT,
 ) callconv(.winapi) BOOL;
 
-/// MapVirtualKey translation: virtual key -> unshifted character.
+/// MapVirtualKey translations: virtual key -> scan code, virtual key -> char.
+pub const MAPVK_VK_TO_VSC: UINT = 0;
 pub const MAPVK_VK_TO_CHAR: UINT = 2;
 pub extern "user32" fn MapVirtualKeyW(
     code: UINT,

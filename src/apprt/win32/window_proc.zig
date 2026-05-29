@@ -27,10 +27,13 @@ inline fn signedHi(value: usize) i32 {
     return @as(i16, @bitCast(hiword(value)));
 }
 
-/// The Set 1 scan code from a key message's lParam (bits 16-23), with the
-/// 0xE000 prefix applied for extended keys (bit 24) to match the keycode table.
-inline fn scancode(lparam_bits: usize) u32 {
-    const sc: u32 = @intCast((lparam_bits >> 16) & 0xFF);
+/// The Set 1 scan code for a key message: the lParam scan code (bits 16-23)
+/// with the 0xE000 prefix for extended keys (bit 24), to match the keycode
+/// table. Falls back to deriving the scan code from the virtual-key code when
+/// the message carries none, so control/special keys still resolve.
+fn scancodeFor(vk: u32, lparam_bits: usize) u32 {
+    var sc: u32 = @intCast((lparam_bits >> 16) & 0xFF);
+    if (sc == 0) sc = winput.scancodeFromVk(vk) & 0xFF;
     return if ((lparam_bits & 0x01000000) != 0) (0xE000 | sc) else sc;
 }
 
@@ -176,11 +179,11 @@ pub fn wndProc(
             const action: input.Action = if ((lp & 0x40000000) != 0) .repeat else .press;
             var buf: [32]u8 = undefined;
             const text = collectText(hwnd, user32.WM_CHAR, &buf);
-            _ = surface.onKey(action, @intCast(wp), scancode(lp), text);
+            _ = surface.onKey(action, @intCast(wp), scancodeFor(@intCast(wp), lp), text);
             return 0;
         },
         user32.WM_KEYUP => {
-            _ = surface.onKey(.release, @intCast(wp), scancode(lp), "");
+            _ = surface.onKey(.release, @intCast(wp), scancodeFor(@intCast(wp), lp), "");
             return 0;
         },
         // WM_CHAR/WM_SYSCHAR are consumed by the matching WM_KEY*DOWN above via
@@ -193,11 +196,11 @@ pub fn wndProc(
             const action: input.Action = if ((lp & 0x40000000) != 0) .repeat else .press;
             var buf: [32]u8 = undefined;
             const text = collectText(hwnd, user32.WM_SYSCHAR, &buf);
-            _ = surface.onKey(action, @intCast(wp), scancode(lp), text);
+            _ = surface.onKey(action, @intCast(wp), scancodeFor(@intCast(wp), lp), text);
             return user32.DefWindowProcW(hwnd, msg, wparam, lparam);
         },
         user32.WM_SYSKEYUP => {
-            _ = surface.onKey(.release, @intCast(wp), scancode(lp), "");
+            _ = surface.onKey(.release, @intCast(wp), scancodeFor(@intCast(wp), lp), "");
             return user32.DefWindowProcW(hwnd, msg, wparam, lparam);
         },
 
