@@ -15,10 +15,13 @@ const VK_LWIN: c_int = 0x5B;
 const VK_RWIN: c_int = 0x5C;
 const VK_NUMLOCK: c_int = 0x90;
 
-/// Map a Win32 virtual-key code to a layout-independent `input.Key`.
-pub fn keyFromVk(vk: u32) input.Key {
+/// Map a Win32 scan code to a layout-independent `input.Key`. Ghostty's keycode
+/// table stores Set 1 scan codes in its Windows column (extended keys use the
+/// 0xE000 prefix), not virtual-key codes, so physical-key matching must be done
+/// by scan code.
+pub fn keyFromScancode(scancode: u32) input.Key {
     for (input.keycodes.entries) |entry| {
-        if (entry.native == vk) return entry.key;
+        if (entry.native == scancode) return entry.key;
     }
     return .unidentified;
 }

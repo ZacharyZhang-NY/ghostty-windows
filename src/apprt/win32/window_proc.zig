@@ -26,6 +26,13 @@ inline fn signedHi(value: usize) i32 {
     return @as(i16, @bitCast(hiword(value)));
 }
 
+/// The Set 1 scan code from a key message's lParam (bits 16-23), with the
+/// 0xE000 prefix applied for extended keys (bit 24) to match the keycode table.
+inline fn scancode(lparam_bits: usize) u32 {
+    const sc: u32 = @intCast((lparam_bits >> 16) & 0xFF);
+    return if ((lparam_bits & 0x01000000) != 0) (0xE000 | sc) else sc;
+}
+
 fn surfaceFrom(hwnd: HWND) ?*Surface {
     const ptr = user32.GetWindowLongPtrW(hwnd, user32.GWLP_USERDATA);
     if (ptr == 0) return null;
@@ -132,11 +139,11 @@ pub fn wndProc(
 
         user32.WM_KEYDOWN => {
             const action: input.Action = if ((lp & 0x40000000) != 0) .repeat else .press;
-            if (surface.onKey(action, @intCast(wp))) return 0;
+            _ = surface.onKey(action, @intCast(wp), scancode(lp));
             return 0;
         },
         user32.WM_KEYUP => {
-            _ = surface.onKey(.release, @intCast(wp));
+            _ = surface.onKey(.release, @intCast(wp), scancode(lp));
             return 0;
         },
         user32.WM_CHAR => {
@@ -148,11 +155,11 @@ pub fn wndProc(
         // default handler run so Alt+F4 and system accelerators keep working.
         user32.WM_SYSKEYDOWN => {
             const action: input.Action = if ((lp & 0x40000000) != 0) .repeat else .press;
-            _ = surface.onKey(action, @intCast(wp));
+            _ = surface.onKey(action, @intCast(wp), scancode(lp));
             return user32.DefWindowProcW(hwnd, msg, wparam, lparam);
         },
         user32.WM_SYSKEYUP => {
-            _ = surface.onKey(.release, @intCast(wp));
+            _ = surface.onKey(.release, @intCast(wp), scancode(lp));
             return user32.DefWindowProcW(hwnd, msg, wparam, lparam);
         },
 

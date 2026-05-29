@@ -274,10 +274,11 @@ pub fn onKey(
     self: *Surface,
     action: input.Action,
     vk: u32,
+    scancode: u32,
 ) bool {
     const ev: input.KeyEvent = .{
         .action = action,
-        .key = winput.keyFromVk(vk),
+        .key = winput.keyFromScancode(scancode),
         .mods = winput.currentMods(),
         .utf8 = "",
         .unshifted_codepoint = unshiftedCodepoint(vk),
